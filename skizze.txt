@@ -1,0 +1,23 @@
+Eingabe-Parameter:
+Start-Datum (optional), Kalendar
+Anfangskapital *, Text
+Sparrate *, Text
+Sparintervall *, Button
+Dynamik *, Check Box
+Zinssatz *, Slider
+Ansparzeit *, Slider
+Zielwert (optional), Text
+Ansparzeit aussetzen
+
+
+Berechnung:
+Endkapital
+Insgesamte Einzahlungen
+Gesamte Zinsen
+
+Tabelle: Jahr, Guthaben zu Jahrebeginn, Einzahlungen, Zinsgutschriften, neues Kapital am Jahresende
+Entwicklung (Line-Chart): Zeit vs. Kapital 
+Übersicht (Pie-Chart): Insgesamte Einzahlungen, Gesamte Zinsen
+Übersicht (Bar-Chart): Zeit vs. Einzahlungen pro Jahr / generierte Zinsen
+Übersicht (Bar-Chart): Zeit vs. Einzahlungen pro Jahr / generierte Zinsen normiert auf 100%
+Entwicklung (Line-Chart): Zeit vs. Kapital + Zeit bis 100k€ + Zielwert, Zeit bis zum Zielwert
