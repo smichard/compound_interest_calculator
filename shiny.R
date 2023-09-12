@@ -1,7 +1,7 @@
 # Bibliotheken laden
 library(dplyr)
 library(ggplot2)
-library(gridExtra)
+#library(gridExtra)
 library(lubridate)
 library(shiny)
 library(tibble)
@@ -13,12 +13,12 @@ ui <- fluidPage(
   sidebarLayout(
     sidebarPanel(
       selectInput("start_date", "Start Year:", 
-                  choices = 2010:2030, selected = 2020),
+                  choices = 2000:2040, selected = 2024),
       numericInput("initial_capital", "Initial Capital:", value = 1000),
       numericInput("savings_rate", "Savings Rate:", value = 100),
       selectInput("savings_intervall", "Savings Intervall:", 
                   choices = c("monthly", "yearly")),
-      numericInput("investment_period", "Investment Perios (in Years):", value = 20),
+      numericInput("investment_period", "Investment Period (in years):", value = 20),
       sliderInput("interest_rate", "Interest Rate [ % ]:", 
                   min = 0, max = 50, value = 7.5, step = 0.5),
       sliderInput("adjustment_rate", "Adjustment Rate [ % ]:", 
@@ -26,17 +26,17 @@ ui <- fluidPage(
       numericInput("savings_suspension", 
                    "Savings Suspension after x years:", value = NA, min = 1),
       numericInput("target_value", "Target Value:", value = NA),
-      actionButton("goButton", "Berechnen")
+      actionButton("goButton", "Calculate")
     ),
     
     mainPanel(
       tabsetPanel(
-        tabPanel("Gesamtkapital", plotOutput("plot1")),
-        tabPanel("Verteilung", plotOutput("plot2"), tableOutput("table1")),
-        tabPanel("Sparbeträge und Zinsen", plotOutput("plot3")),
-        tabPanel("Normierte Werte", plotOutput("plot4")),
-        tabPanel("Kapitalentwicklung", plotOutput("plot5")),
-        tabPanel("Tabelle", tableOutput("table2"))
+        tabPanel("Overview", plotOutput("plot1")),
+        tabPanel("Distribution", plotOutput("plot2"), tableOutput("table1")),
+        tabPanel("Savings Rate", plotOutput("plot3")),
+        tabPanel("Normalized Values", plotOutput("plot4")),
+        tabPanel("Goals", plotOutput("plot5"), plotOutput("plot6"), textOutput("target_message")),
+        tabPanel("Values", tableOutput("table2"))
       )
     )
   )
@@ -101,8 +101,18 @@ server <- function(input, output) {
       }
       
       if (savings_intervall == "monthly") {
-        monthlyer_interest_rate <- interest_rate / 12
-        interest <- sum(sapply(1:12, function(m) (capital_start + (m - 1) * savings_anount * (1 + adjustment_rate)^(i - 1)) * monthlyer_interest_rate))
+        monthlyer_interest_rate <- 100*((1 + interest_rate / 100)^(1/12) - 1)
+        monthly_savings <- savings_anount / 12
+        total_interest <- 0
+        current_capital <- capital_start
+        
+        for (m in 1:12) {
+          monthly_interest = current_capital * monthlyer_interest_rate
+          total_interest <- total_interest + monthly_interest
+          current_capital <- current_capital + monthly_interest + monthly_savings
+        }
+        
+        interest <- total_interest
       } else {
         interest <- capital_start * interest_rate
       }
@@ -110,8 +120,8 @@ server <- function(input, output) {
       accumulated_savings_anount <- accumulated_savings_anount + savings_anount
       accumulated_capital <- initial_capital + accumulated_savings_anount
       growth <- savings_anount + interest
-      savings_anount_normalized <- savings_anount / growth
-      interest_normalized <- interest / growth
+      savings_anount_normalized <- 100 * savings_anount / growth
+      interest_normalized <- 100 * interest / growth
       capital_end <- capital_start + growth
       
       results$capital_start[i] <- round(capital_start, 2)
@@ -129,7 +139,19 @@ server <- function(input, output) {
     complete_data <- rbind(complete_data, c('Sum', NA, round(sum(complete_data$savings_anount), 2), round(sum(complete_data$interest), 2), NA, NA, NA, NA, round(complete_data$capital_end[investment_period], 2)))
     #results <- rbind(results, c(NA, NA, round(sum(results$savings_anount), 2), round(sum(results$interest), 2), NA, NA, NA, NA, round(results$capital_end[investment_period], 2)))
     
+    # Daten für den Pie-Chart berechnen
+    total_savings_anount <- sum(results$savings_anount) + initial_capital
+    total_interest <- sum(results$interest)
+    total_capital <- total_savings_anount + total_interest
     
+    # Überprüfen Sie, ob target_value nicht NA ist
+    if (!is.na(target_value)) {
+      # Interpolieren Sie, um das Jahr zu finden, in dem target_value erreicht wird
+      interpolated_target <- approx(results$capital_end, results$year, xout = target_value)
+      
+      # Datum, an dem target_value erreicht wird
+      year_at_target <- interpolated_target$y  # Abrunden ohne Nachkommastellen
+    }
 
     output$plot1 <- renderPlot({
       ggplot(results, aes(x = year)) +
@@ -151,11 +173,6 @@ server <- function(input, output) {
     })
     
     output$plot2 <- renderPlot({
-      # Daten für den Pie-Chart berechnen
-      total_savings_anount <- sum(results$savings_anount) + initial_capital
-      total_interest <- sum(results$interest)
-      total_capital <- total_savings_anount + total_interest
-      
       # Daten für den Pie-Chart erstellen
       pie_data <- data.frame(
         Kategorie = c("Total Savings", "Total Interest"),
@@ -240,7 +257,51 @@ server <- function(input, output) {
     })
     
     output$plot5 <- renderPlot({
-
+      # Diagramm erstellen
+      # Bestimmen Sie die Jahre, in denen die Linie capital_end die Schwellenwerte erreicht
+      thresholds <- seq(100000, 1000000, by = 100000)
+      years_at_threshold <- numeric(length(thresholds))
+      
+      for (i in 1:length(thresholds)) {
+        interpolated <- approx(results$capital_end, results$year, xout = thresholds[i])
+        years_at_threshold[i] <- interpolated$y
+      }
+      
+      if (!all(is.na(years_at_threshold))) {
+        # Erstellen Sie ein Dataframe für die Segmente
+        segment_data <- data.frame(
+          x = rep(min(results$year), length(thresholds)),
+          xend = years_at_threshold,
+          y = thresholds,
+          yend = thresholds
+        )
+        
+        segment_data <- na.omit(segment_data)
+        
+        # Abstand zwischen den Jahren berechnen
+        segment_data$diff <- c(NA, diff(segment_data$xend))
+        
+        # Zeitraum bis zum Erreichen der ersten 100.000 Euro berechnen
+        time_to_first_threshold <- segment_data$xend[1] - segment_data$x[1]
+        
+        # Diagramm erstellen
+        ggplot(results, aes(x = year, y = capital_end)) +
+          geom_line(color = "lightgreen", size= 1.2) +
+          geom_segment(data = segment_data, aes(x = xend, xend = xend, y = 0, yend = y), linetype = "dashed", color = "steelblue") +
+          geom_text(data = segment_data[1, ], aes(x = xend, y = max(results$capital_end) * 0.05, label = sprintf("%.1f", time_to_first_threshold)), check_overlap = TRUE, size = 5, hjust = 1.2, vjust = 0.6) +  # Text für den ersten Schwellenwert hinzufügen
+          geom_text(data = segment_data[-1, ], aes(x = xend, y = max(results$capital_end) * 0.05, label = sprintf("%.1f", diff)), check_overlap = TRUE, size = 5, hjust = 1.2, vjust = 0.6) +  # Text für die anderen Schwellenwerte hinzufügen
+          labs(title = "Development of the total capital and consideration of characteristic anchor points.", x = "Year", y = "Value [ € ]") +
+          scale_y_continuous(labels = scales::comma_format(big.mark = ".", decimal.mark = ",")) +
+          theme_minimal() +
+          theme(
+            plot.title = element_text(size = 20, hjust = 0.5),
+            plot.title.position = "plot",
+            legend.text = element_text(size = 16),
+            legend.title = element_blank(),  # Titel der Legende ausblenden
+            axis.text = element_text(size = 14), # Größe der Achsenbeschriftung ändern
+            axis.title = element_text(size = 16)  # Größe des Achsentitels ändern
+            )  
+      }
     })
     
     output$table1 <- renderTable({
@@ -252,6 +313,39 @@ server <- function(input, output) {
       )
       table_summary
     }, colnames = FALSE)
+    
+    output$plot6 <- renderPlot({
+      # Überprüfen Sie, ob ein Datum ermittelt wurde
+      if (!is.na(target_value)) {
+        # Fügen Sie horizontale und vertikale Linien in das Diagramm ein
+        ggplot(results, aes(x = year, y = capital_end)) +
+          geom_line(color = "lightgreen", size= 1.2) +
+          geom_hline(yintercept = target_value, linetype = "dashed", color = "steelblue", size = 1) +
+          geom_vline(xintercept = year_at_target, linetype = "dashed", color = "steelblue", size = 1) +
+          geom_text(aes(x = year_at_target, y = 0, label = as.character(floor(year_at_target))), size = 5, hjust = 1.2, vjust = 0.6, color = "steelblue") +
+          labs(title = "Total capital and point in time of target value", x = "Year", y = "Value [ € ]") +
+          scale_y_continuous(labels = scales::comma_format(big.mark = ".", decimal.mark = ",")) +
+          theme_minimal() +
+          theme(
+            plot.title = element_text(size = 20, hjust = 0.5),
+            plot.title.position = "plot",
+            legend.text = element_text(size = 16),
+            legend.title = element_blank(),
+            axis.text = element_text(size = 14),
+            axis.title = element_text(size = 16)
+          )
+      }
+    })
+    
+    output$target_message <- renderText({
+      if (!is.na(target_value)) {
+        if (!is.na(year_at_target)) {
+          message <- sprintf("The target value of %s € will likely be achieved by %d.", format(target_value, big.mark = ".", decimal.mark = ",", scientific = FALSE), floor(year_at_target))
+        } else {
+          message <- sprintf("The target value of %s € will not be achieved within the chosen observation period.", format(target_value, big.mark = ".", decimal.mark = ",", scientific = FALSE))
+        }
+      }
+    })
     
     output$table2 <- renderTable({
       table_all_values <- complete_data %>%

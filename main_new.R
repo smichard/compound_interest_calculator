@@ -1,17 +1,17 @@
 # Load libraries
 library(dplyr)
 library(ggplot2)
-library(gridExtra)
+#library(gridExtra)
 library(lubridate)
 library(tibble)
 
 # Input parameters
 start_date <- ymd("2024-01-01")
-initial_capital <- 5000
+initial_capital <- 1000
 savings_rate <- 100
 savings_intervall <- "monthly"  # oder "yearly"
 adjustment_rate <- 0  # 5% als Dezimalzahl
-interest_rate <- 0.1  # 3% als Dezimalzahl
+interest_rate <- 0.075  # 3% als Dezimalzahl
 investment_period <- 20  # in yearen
 savings_suspension <- NA  # Optionaler Wert
 target_value <- NA  # Optionaler Wert
@@ -49,8 +49,18 @@ for (i in 1:investment_period) {
   }
   
   if (savings_intervall == "monthly") {
-    monthlyer_interest_rate <- interest_rate / 12
-    interest <- sum(sapply(1:12, function(m) (capital_start + (m - 1) * savings_anount * (1 + adjustment_rate)^(i - 1)) * monthlyer_interest_rate))
+    monthlyer_interest_rate <- 100*((1 + interest_rate / 100)^(1/12) - 1)
+    monthly_savings <- savings_anount / 12
+    total_interest <- 0
+    current_capital <- capital_start
+    
+    for (m in 1:12) {
+      monthly_interest = current_capital * monthlyer_interest_rate
+      total_interest <- total_interest + monthly_interest
+      current_capital <- current_capital + monthly_interest + monthly_savings
+    }
+    
+    interest <- total_interest
   } else {
     interest <- capital_start * interest_rate
   }
@@ -58,8 +68,8 @@ for (i in 1:investment_period) {
   accumulated_savings_anount <- accumulated_savings_anount + savings_anount
   accumulated_capital <- initial_capital + accumulated_savings_anount
   growth <- savings_anount + interest
-  savings_anount_normalized <- savings_anount / growth
-  interest_normalized <- interest / growth
+  savings_anount_normalized <- 100 * savings_anount / growth
+  interest_normalized <- 100 * interest / growth
   capital_end <- capital_start + growth
   
   results$capital_start[i] <- round(capital_start, 2)
@@ -204,35 +214,90 @@ table_summary <- data.frame(
 invisible(apply(table_summary, 1, function(row) cat(paste(row, collapse = "\t"), "\n")))
 
 # Diagramm erstellen
-# Bestimmen Sie die yeare, in denen die Linie capital_end die Schwellenwerte erreicht
+# Bestimmen Sie die Jahre, in denen die Linie capital_end die Schwellenwerte erreicht
 thresholds <- seq(100000, 1000000, by = 100000)
 years_at_threshold <- numeric(length(thresholds))
 
 for (i in 1:length(thresholds)) {
-  years_at_threshold[i] <- min(results$year[results$capital_end >= thresholds[i]], na.rm = TRUE)
+  interpolated <- approx(results$capital_end, results$year, xout = thresholds[i])
+  years_at_threshold[i] <- interpolated$y
 }
 
-# Erstellen Sie ein Dataframe für die Segmente
-segment_data <- data.frame(
-  x = rep(min(results$year), length(thresholds)),
-  xend = years_at_threshold,
-  y = thresholds,
-  yend = thresholds
-)
-
-# Diagramm erstellen, TO DO: fertigstellen
-ggplot(results, aes(x = year, y = capital_end)) +
-  geom_line(color = "blue") +
-  geom_segment(data = segment_data, aes(x = x, xend = xend, y = y, yend = yend), linetype = "dashed", color = "red") +
-  geom_segment(data = segment_data, aes(x = xend, xend = xend, y = 0, yend = y), linetype = "dashed", color = "red") +
-  labs(title = "Entwicklung des Kapitals über die Zeit", x = "year", y = "Betrag in €") +
-  scale_y_continuous(labels = scales::comma_format(big.mark = ".", decimal.mark = ",")) +
-  theme_minimal() +
-  theme(
-    plot.title = element_text(size = 20, hjust = 0.5),
-    plot.title.position = "plot",
-    legend.text = element_text(size = 16),
-    axis.text = element_text(size = 14), # Größe der Achsenbeschriftung ändern
-    axis.title = element_text(size = 16)  # Größe des Achsentitels ändern
+if (!all(is.na(years_at_threshold))) {
+  # Erstellen Sie ein Dataframe für die Segmente
+  segment_data <- data.frame(
+    x = rep(min(results$year), length(thresholds)),
+    xend = years_at_threshold,
+    y = thresholds,
+    yend = thresholds
   )
+  
+  segment_data <- na.omit(segment_data)
+  
+  # Abstand zwischen den Jahren berechnen
+  segment_data$diff <- c(NA, diff(segment_data$xend))
+  
+  # Zeitraum bis zum Erreichen der ersten 100.000 Euro berechnen
+  time_to_first_threshold <- segment_data$xend[1] - segment_data$x[1]
+  
+  # Diagramm erstellen
+  ggplot(results, aes(x = year, y = capital_end)) +
+    geom_line(color = "lightgreen", size= 1.2) +
+    geom_segment(data = segment_data, aes(x = xend, xend = xend, y = 0, yend = y), linetype = "dashed", color = "steelblue") +
+    geom_text(data = segment_data[1, ], aes(x = xend, y = max(results$capital_end) * 0.05, label = sprintf("%.1f", time_to_first_threshold)), check_overlap = TRUE, size = 5, hjust = 1.2, vjust = 0.6) +  # Text für den ersten Schwellenwert hinzufügen
+    geom_text(data = segment_data[-1, ], aes(x = xend, y = max(results$capital_end) * 0.05, label = sprintf("%.1f", diff)), check_overlap = TRUE, size = 5, hjust = 1.2, vjust = 0.6) +  # Text für die anderen Schwellenwerte hinzufügen
+    labs(title = "Development of the total capital and consideration of characteristic anchor points.", x = "Year", y = "Value [ € ]") +
+    scale_y_continuous(labels = scales::comma_format(big.mark = ".", decimal.mark = ",")) +
+    theme_minimal() +
+    theme(
+      plot.title = element_text(size = 20, hjust = 0.5),
+      plot.title.position = "plot",
+      legend.text = element_text(size = 16),
+      legend.title = element_blank(),  # Titel der Legende ausblenden
+      axis.text = element_text(size = 14), # Größe der Achsenbeschriftung ändern
+      axis.title = element_text(size = 16)  # Größe des Achsentitels ändern
+    )  
+}
+
+# Überprüfen Sie, ob target_value nicht NA ist
+if (!is.na(target_value)) {
+  # Interpolieren Sie, um das Jahr zu finden, in dem target_value erreicht wird
+  interpolated_target <- approx(results$capital_end, results$year, xout = target_value)
+  
+  # Datum, an dem target_value erreicht wird
+  year_at_target <- interpolated_target$y  # Abrunden ohne Nachkommastellen
+}
+
+# Überprüfen Sie, ob ein Datum ermittelt wurde
+if (!is.na(target_value)) {
+  # Fügen Sie horizontale und vertikale Linien in das Diagramm ein
+  target_plot <- ggplot(results, aes(x = year, y = capital_end)) +
+    geom_line(color = "lightgreen", size= 1.2) +
+    geom_hline(yintercept = target_value, linetype = "dashed", color = "steelblue", size = 1) +
+    geom_vline(xintercept = year_at_target, linetype = "dashed", color = "steelblue", size = 1) +
+    geom_text(aes(x = year_at_target, y = 0, label = as.character(floor(year_at_target))), size = 5, hjust = 1.2, vjust = 0.6, color = "steelblue") +
+    labs(title = "Total capital and point in time of target value", x = "Year", y = "Value [ € ]") +
+    scale_y_continuous(labels = scales::comma_format(big.mark = ".", decimal.mark = ",")) +
+    theme_minimal() +
+    theme(
+      plot.title = element_text(size = 20, hjust = 0.5),
+      plot.title.position = "plot",
+      legend.text = element_text(size = 16),
+      legend.title = element_blank(),
+      axis.text = element_text(size = 14),
+      axis.title = element_text(size = 16)
+    )
+  target_plot
+}
+
+
+if (!is.na(target_value)) {
+  if (!is.na(year_at_target)) {
+    message <- sprintf("The target value of %s € will likely be achieved by %d.", format(target_value, big.mark = ".", decimal.mark = ",", scientific = FALSE), floor(year_at_target))
+    print(message)
+  } else {
+    message <- sprintf("The target value of %s € will not be achieved within the chosen observation period.", format(target_value, big.mark = ".", decimal.mark = ",", scientific = FALSE))
+    print(message)
+  }
+}
 

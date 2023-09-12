@@ -24,7 +24,8 @@ Entwicklung (Line-Chart): Zeit vs. Kapital
 Entwicklung (Line-Chart): Zeit vs. Kapital + Zeit bis 100k€ + Zielwert, Zeit bis zum Zielwert
 
 To Do:
-- [ ] Farben einheitlich für alle Diagramme
-- [ ] Funktion wann wird Zielwert erreicht
-- [ ] Shiny App, Input Parameter anpassen
-- [ ] Shiny App Tabelle darstellen
+- [x] Farben einheitlich für alle Diagramme
+- [x] Funktion wann wird Zielwert erreicht
+- [x] Shiny App, Input Parameter anpassen
+- [x] Shiny App Tabelle darstellen
+- [ ] interest rate umbennen in der Legende zu Generated Interest
