@@ -1,7 +1,8 @@
 # Load libraries
+library(ggplot2)
+library(gridExtra)
 library(lubridate)
 library(tibble)
-library(ggplot2)
 
 # Input parameters
 start_date <- ymd("2024-01-01")
@@ -70,18 +71,28 @@ for (i in 1:investment_period) {
   results$capital_end[i] <- round(capital_end, 2)
 }
 
-# Summenzeile hinzufügen
+# Summenzeile hinzufügen, TO DO: Vergleich Results und complete data
 complete_data <- results
 complete_data <- rbind(complete_data, c('Sum', NA, round(sum(complete_data$savings_anount), 2), round(sum(complete_data$interest), 2), NA, NA, NA, NA, round(complete_data$capital_end[investment_period], 2)))
 #results <- rbind(results, c(NA, NA, round(sum(results$savings_anount), 2), round(sum(results$interest), 2), NA, NA, NA, NA, round(results$capital_end[investment_period], 2)))
 
 # Diagramm erstellen
 ggplot(results, aes(x = year)) +
-  geom_line(aes(y = capital_end, color = "Total Capital")) +
-  geom_line(aes(y = accumulated_capital, color = "Savings")) +
-  labs(title = "Capital growth over time", x = "Year", y = "Amount [ € ]", color = "Legende") +
+  geom_line(aes(y = accumulated_capital, color = "Savings"), size = 1.2) +
+  geom_line(aes(y = capital_end, color = "Total Capital"), size = 1.2) +
+  labs(title = "Capital growth over time", x = "Year", y = "Amount [ € ]") +
   scale_y_continuous(labels = scales::comma_format(big.mark = ".", decimal.mark = ",")) +
-  theme_minimal()
+  scale_color_manual(values = c("Savings" = "steelblue", "Total Capital" = "lightgreen"),
+                     breaks = c("Total Capital", "Savings")) + # Reihenfolge in der Legende ändern
+  guides(color = guide_legend(title = NULL)) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 20, hjust = 0.5),
+    plot.title.position = "plot",
+    legend.text = element_text(size = 16),
+    axis.text = element_text(size = 14), # Größe der Achsenbeschriftung ändern
+    axis.title = element_text(size = 16)  # Größe des Achsentitels ändern
+  )
 
 # Daten für den Pie-Chart berechnen
 total_savings_anount <- sum(results$savings_anount) + initial_capital
@@ -94,12 +105,13 @@ pie_data <- data.frame(
   Wert = c(total_savings_anount, total_interest)
 )
 
-# Pie-Chart erstellen, Farben ändern
 ggplot(pie_data, aes(x = "", y = Wert, fill = Kategorie)) +
   geom_bar(width = 1, stat = "identity") +
   coord_polar("y", start = 0) +
-  geom_text(aes(label = paste0(round(Wert / total_capital * 100, 1), "%")), position = position_stack(vjust = 0.5)) +
-  labs(title = "Distribution of savings and interest", fill = "Kategorie") +
+  geom_text(aes(label = paste0(round(Wert / total_capital * 100, 1), "%")), 
+            position = position_stack(vjust = 0.5), size = 6) +
+  labs(title = "Distribution of savings and interest") +
+  scale_fill_manual(values = c("Total Interest" = "lightgreen", "Total Savings" = "steelblue")) +
   theme_minimal() +
   theme(
     axis.title.x = element_blank(),
@@ -108,7 +120,11 @@ ggplot(pie_data, aes(x = "", y = Wert, fill = Kategorie)) +
     axis.text.y = element_blank(),
     axis.ticks = element_blank(),
     panel.grid = element_blank(),
-    panel.border = element_blank()
+    panel.border = element_blank(),
+    plot.title = element_text(size = 20, hjust = 0.5),
+    plot.title.position = "plot",
+    legend.title = element_blank(),
+    legend.text = element_text(size = 16)
   )
 
 # Diagramm erstellen
@@ -119,28 +135,65 @@ y_max <- max(max_savings_anount, max_interest)
 
 # Diagramm erstellen
 ggplot(results, aes(x = year)) +
-  geom_line(aes(y = savings_anount, color = "Savings Rate"), size = 1) +
-  geom_line(aes(y = interest, color = "Interest Rate"), size = 1) +
+  geom_line(aes(y = savings_anount, color = "Savings Rate"), size = 1.2) +
+  geom_line(aes(y = interest, color = "Interest Rate"), size = 1.2) +
   labs(
     title = "Development of the savings rate and interest rate over the years",
     x = "Year",
-    y = "Amount [ € ]",
-    color = "Kategorie"
+    y = "Amount [ € ]"
   ) +
+  scale_color_manual(values = c("Savings Rate" = "steelblue", "Interest Rate" = "lightgreen")) +
   scale_y_continuous(limits = c(0, y_max), labels = scales::comma_format(big.mark = ".", decimal.mark = ",")) +
-  theme_minimal()
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 20, hjust = 0.5),
+    plot.title.position = "plot",
+    legend.text = element_text(size = 16),
+    legend.title = element_blank(),  # Titel der Legende ausblenden
+    axis.text = element_text(size = 14), # Größe der Achsenbeschriftung ändern
+    axis.title = element_text(size = 16)  # Größe des Achsentitels ändern
+  )
 
 # Diagramm erstellen
 ggplot(results, aes(x = year)) +
-  geom_line(aes(y = savings_anount_normalized, color = "Savings Rate"), size = 1) +
-  geom_line(aes(y = interest_normalized, color = "Interest Rate"), size = 1) +
+  geom_line(aes(y = savings_anount_normalized, color = "Savings Rate"), size = 1.2) +
+  geom_line(aes(y = interest_normalized, color = "Interest Rate"), size = 1.2) +
   labs(
     title = "Normalized savings rate and interest rate over the years",
     x = "Year",
-    y = "Normalized Value [ % ]",
-    color = "Kategorie"
+    y = "Normalized Value [ % ]"
   ) +
-  theme_minimal()
+  scale_color_manual(values = c("Savings Rate" = "steelblue", "Interest Rate" = "lightgreen")) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 20, hjust = 0.5),
+    plot.title.position = "plot",
+    legend.text = element_text(size = 16),
+    legend.title = element_blank(),  # Titel der Legende ausblenden
+    axis.text = element_text(size = 14), # Größe der Achsenbeschriftung ändern
+    axis.title = element_text(size = 16)  # Größe des Achsentitels ändern
+  )
+
+
+# Daten für die Tabelle erstellen, TO DO: Tabelle optimieren
+table_data <- data.frame(
+  Category_gssgsd = c("Total Capital [ € ]", "Total Savings [ € ]", "Total Interests [ € ]"),
+  Value_gffgdgd = c(format(round(total_capital), big.mark = ".", decimal.mark = ",", scientific = FALSE),
+                    format(round(total_savings_anount), big.mark = ".", decimal.mark = ",", scientific = FALSE),
+                    format(round(total_interest), big.mark = ".", decimal.mark = ",", scientific = FALSE))
+)
+
+# Tabelle erstellen
+table_grob <- tableGrob(table_data, 
+                        rows = NULL, 
+                        theme = ttheme_minimal(
+                          base_size = 18, # Größe des Textes ändern
+                          core = list(just = c("left", "right")), # Textausrichtung für beide Spalten
+                          colhead = list(fg_params = list(col = "transparent")) # Überschriften ausblenden
+                        ))
+
+# Tabelle anzeigen
+grid.arrange(table_grob)
 
 # Diagramm erstellen
 # Bestimmen Sie die yeare, in denen die Linie capital_end die Schwellenwerte erreicht
@@ -159,12 +212,19 @@ segment_data <- data.frame(
   yend = thresholds
 )
 
-# Diagramm erstellen
+# Diagramm erstellen, TO DO: fertigstellen
 ggplot(results, aes(x = year, y = capital_end)) +
   geom_line(color = "blue") +
   geom_segment(data = segment_data, aes(x = x, xend = xend, y = y, yend = yend), linetype = "dashed", color = "red") +
   geom_segment(data = segment_data, aes(x = xend, xend = xend, y = 0, yend = y), linetype = "dashed", color = "red") +
   labs(title = "Entwicklung des Kapitals über die Zeit", x = "year", y = "Betrag in €") +
   scale_y_continuous(labels = scales::comma_format(big.mark = ".", decimal.mark = ",")) +
-  theme_minimal()
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 20, hjust = 0.5),
+    plot.title.position = "plot",
+    legend.text = element_text(size = 16),
+    axis.text = element_text(size = 14), # Größe der Achsenbeschriftung ändern
+    axis.title = element_text(size = 16)  # Größe des Achsentitels ändern
+  )
 
