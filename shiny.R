@@ -1,24 +1,31 @@
 # Bibliotheken laden
-library(shiny)
-library(lubridate)
-library(tibble)
+library(dplyr)
 library(ggplot2)
+library(gridExtra)
+library(lubridate)
+library(shiny)
+library(tibble)
 
 # UI definieren
 ui <- fluidPage(
-  titlePanel("Entwicklung des Kapitals über die Zeit"),
+  titlePanel("Capital building calculator"),
   
   sidebarLayout(
     sidebarPanel(
-      dateInput("start_datum", "Startdatum:", value = ymd("2024-01-01")),
-      numericInput("anfangskapital", "Anfangskapital:", value = 1000),
-      numericInput("sparrate", "Sparrate:", value = 100),
-      selectInput("sparintervall", "Sparintervall:", choices = c("monatlich", "jährlich")),
-      numericInput("dynamik", "Dynamik (%):", value = 0, min = 0, max = 20),
-      numericInput("zinssatz", "Zinssatz (%):", value = 7.5, min = 0, max = 50),
-      numericInput("Dauer", "Dauer (in Jahren):", value = 20),
-      numericInput("Aussetzen_des_Sparbetrags", "Aussetzen des Sparbetrags (Jahr):", value = NA, min = 1),
-      numericInput("Zielwert", "Zielwert:", value = NA),
+      selectInput("start_date", "Start Year:", 
+                  choices = 2010:2030, selected = 2020),
+      numericInput("initial_capital", "Initial Capital:", value = 1000),
+      numericInput("savings_rate", "Savings Rate:", value = 100),
+      selectInput("savings_intervall", "Savings Intervall:", 
+                  choices = c("monthly", "yearly")),
+      numericInput("investment_period", "Investment Perios (in Years):", value = 20),
+      sliderInput("interest_rate", "Interest Rate [ % ]:", 
+                  min = 0, max = 50, value = 7.5, step = 0.5),
+      sliderInput("adjustment_rate", "Adjustment Rate [ % ]:", 
+                  min = 0, max = 20, value = 0, step = 0.5),
+      numericInput("savings_suspension", 
+                   "Savings Suspension after x years:", value = NA, min = 1),
+      numericInput("target_value", "Target Value:", value = NA),
       actionButton("goButton", "Berechnen")
     ),
     
@@ -28,7 +35,8 @@ ui <- fluidPage(
         tabPanel("Verteilung", plotOutput("plot2")),
         tabPanel("Sparbeträge und Zinsen", plotOutput("plot3")),
         tabPanel("Normierte Werte", plotOutput("plot4")),
-        tabPanel("Kapitalentwicklung", plotOutput("plot5"))
+        tabPanel("Kapitalentwicklung", plotOutput("plot5")),
+        tabPanel("Tabelle", tableOutput("table1"))
       )
     )
   )
@@ -36,105 +44,131 @@ ui <- fluidPage(
 
 # Server definieren
 server <- function(input, output) {
+  input_values <- reactiveVal(NULL)
   
   observeEvent(input$goButton, {
+    input_values(list(
+      start_date = ymd(paste0(input$start_date, "-01-01")),
+      adjustment_rate = input$adjustment_rate,
+      interest_rate = input$interest_rate,
+      initial_capital = input$initial_capital,
+      savings_rate = input$savings_rate,
+      savings_intervall = input$savings_intervall,
+      investment_period = input$investment_period,
+      savings_suspension = input$savings_suspension,
+      target_value = input$target_value
+    ))
     
-    # Eingangsparameter
-    start_datum <- ymd(input$start_datum)
-    anfangskapital <- input$anfangskapital
-    sparrate <- input$sparrate
-    sparintervall <- input$sparintervall
-    dynamik <- input$dynamik / 100
-    zinssatz <- input$zinssatz / 100
-    Dauer <- input$Dauer
-    Aussetzen_des_Sparbetrags <- ifelse(is.na(input$Aussetzen_des_Sparbetrags), NA, input$Aussetzen_des_Sparbetrags)
-    Zielwert <- ifelse(is.na(input$Zielwert), NA, input$Zielwert)
+    start_date <- input_values()$start_date
+    adjustment_rate <- input_values()$adjustment_rate/100
+    interest_rate <- input_values()$interest_rate/100
+    initial_capital <- input_values()$initial_capital
+    savings_rate <- input_values()$savings_rate
+    savings_intervall <- input_values()$savings_intervall
+    investment_period <- input_values()$investment_period
+    savings_suspension <- input_values()$savings_suspension
+    target_value <- input_values()$target_value
     
-    # Tabelle erstellen
-    ergebnisse <- tibble(
-      Jahr = year(start_datum) + 0:(Dauer - 1),
-      Kapital_Beginn = NA_real_,
-      Sparbetrag = NA_real_,
-      Zinsen = NA_real_,
-      Angespartes_Kapital = NA_real_,
-      Wachstum = NA_real_,
-      Sparbetrag_normiert = NA_real_,
-      Zinsen_normiert = NA_real_,
-      Kapital_Ende = NA_real_
+    results <- tibble(
+      year = year(start_date) + 0:(investment_period - 1),
+      capital_start = NA_real_,
+      savings_anount = NA_real_,
+      interest = NA_real_,
+      accumulated_capital = NA_real_,
+      growth = NA_real_,
+      savings_anount_normalized = NA_real_,
+      interest_normalized = NA_real_,
+      capital_end = NA_real_
     )
     
-    kumulierter_sparbetrag <- 0
+    accumulated_savings_anount <- 0
     
-    for (i in 1:Dauer) {
+    for (i in 1:investment_period) {
       if (i == 1) {
-        kapital_beginn <- anfangskapital
+        capital_start <- initial_capital
       } else {
-        kapital_beginn <- ergebnisse$Kapital_Ende[i - 1]
+        capital_start <- results$capital_end[i - 1]
       }
       
-      if (!is.na(Aussetzen_des_Sparbetrags) && i > Aussetzen_des_Sparbetrags && Aussetzen_des_Sparbetrags < Dauer) {
-        sparbetrag <- 0
+      if (!is.na(savings_suspension) && i > savings_suspension && savings_suspension < investment_period) {
+        savings_anount <- 0
       } else {
-        if (sparintervall == "monatlich") {
-          sparbetrag <- sparrate * (1 + dynamik)^(i - 1) * 12
+        if (savings_intervall == "monthly") {
+          savings_anount <- savings_rate * (1 + adjustment_rate)^(i - 1) * 12
         } else {
-          sparbetrag <- sparrate * (1 + dynamik)^(i - 1)
+          savings_anount <- savings_rate * (1 + adjustment_rate)^(i - 1)
         }
       }
       
-      if (sparintervall == "monatlich") {
-        monatlicher_zinssatz <- zinssatz / 12
-        zinsen <- sum(sapply(1:12, function(m) (kapital_beginn + (m - 1) * sparbetrag * (1 + dynamik)^(i - 1)) * monatlicher_zinssatz))
+      if (savings_intervall == "monthly") {
+        monthlyer_interest_rate <- interest_rate / 12
+        interest <- sum(sapply(1:12, function(m) (capital_start + (m - 1) * savings_anount * (1 + adjustment_rate)^(i - 1)) * monthlyer_interest_rate))
       } else {
-        zinsen <- kapital_beginn * zinssatz
+        interest <- capital_start * interest_rate
       }
       
-      kumulierter_sparbetrag <- kumulierter_sparbetrag + sparbetrag
-      angespartes_kapital <- anfangskapital + kumulierter_sparbetrag
-      wachstum <- sparbetrag + zinsen
-      sparbetrag_normiert <- sparbetrag / wachstum
-      zinsen_normiert <- zinsen / wachstum
-      kapital_ende <- kapital_beginn + wachstum
+      accumulated_savings_anount <- accumulated_savings_anount + savings_anount
+      accumulated_capital <- initial_capital + accumulated_savings_anount
+      growth <- savings_anount + interest
+      savings_anount_normalized <- savings_anount / growth
+      interest_normalized <- interest / growth
+      capital_end <- capital_start + growth
       
-      ergebnisse$Kapital_Beginn[i] <- round(kapital_beginn, 2)
-      ergebnisse$Sparbetrag[i] <- round(sparbetrag, 2)
-      ergebnisse$Zinsen[i] <- round(zinsen, 2)
-      ergebnisse$Angespartes_Kapital[i] <- round(angespartes_kapital, 2)
-      ergebnisse$Wachstum[i] <- round(wachstum, 2)
-      ergebnisse$Sparbetrag_normiert[i] <- round(sparbetrag_normiert, 2)
-      ergebnisse$Zinsen_normiert[i] <- round(zinsen_normiert, 2)
-      ergebnisse$Kapital_Ende[i] <- round(kapital_ende, 2)
+      results$capital_start[i] <- round(capital_start, 2)
+      results$savings_anount[i] <- round(savings_anount, 2)
+      results$interest[i] <- round(interest, 2)
+      results$accumulated_capital[i] <- round(accumulated_capital, 2)
+      results$growth[i] <- round(growth, 2)
+      results$savings_anount_normalized[i] <- round(savings_anount_normalized, 2)
+      results$interest_normalized[i] <- round(interest_normalized, 2)
+      results$capital_end[i] <- round(capital_end, 2)
     }
     
-    # Summenzeile hinzufügen
-    ergebnisse <- rbind(ergebnisse, c(NA, NA, round(sum(ergebnisse$Sparbetrag), 2), round(sum(ergebnisse$Zinsen), 2), NA, NA, NA, NA, round(ergebnisse$Kapital_Ende[Dauer], 2)))
+    # Summenzeile hinzufügen, TO DO: Vergleich Results und complete data
+    complete_data <- results
+    complete_data <- rbind(complete_data, c('Sum', NA, round(sum(complete_data$savings_anount), 2), round(sum(complete_data$interest), 2), NA, NA, NA, NA, round(complete_data$capital_end[investment_period], 2)))
+    #results <- rbind(results, c(NA, NA, round(sum(results$savings_anount), 2), round(sum(results$interest), 2), NA, NA, NA, NA, round(results$capital_end[investment_period], 2)))
     
+    
+
     output$plot1 <- renderPlot({
-      ggplot(ergebnisse, aes(x = Jahr)) +
-        geom_line(aes(y = Kapital_Ende, color = "Gesamtkapital")) +
-        geom_line(aes(y = Angespartes_Kapital, color = "Angespartes Geld")) +
-        labs(title = "Entwicklung des Kapitals über die Zeit", x = "Jahr", y = "Betrag in €", color = "Legende") +
+      ggplot(results, aes(x = year)) +
+        geom_line(aes(y = accumulated_capital, color = "Savings"), size = 1.2) +
+        geom_line(aes(y = capital_end, color = "Total Capital"), size = 1.2) +
+        labs(title = "Capital growth over time", x = "Year", y = "Amount [ € ]") +
         scale_y_continuous(labels = scales::comma_format(big.mark = ".", decimal.mark = ",")) +
-        theme_minimal()
+        scale_color_manual(values = c("Savings" = "steelblue", "Total Capital" = "lightgreen"),
+                           breaks = c("Total Capital", "Savings")) + # Reihenfolge in der Legende ändern
+        guides(color = guide_legend(title = NULL)) +
+        theme_minimal() +
+        theme(
+          plot.title = element_text(size = 20, hjust = 0.5),
+          plot.title.position = "plot",
+          legend.text = element_text(size = 16),
+          axis.text = element_text(size = 14), # Größe der Achsenbeschriftung ändern
+          axis.title = element_text(size = 16)  # Größe des Achsentitels ändern
+        )
     })
     
     output$plot2 <- renderPlot({
-      gesamter_sparbetrag <- sum(ergebnisse$Sparbetrag) + anfangskapital
-      gesamte_zinsen <- sum(ergebnisse$Zinsen)
-      gesamt <- gesamter_sparbetrag + gesamte_zinsen
+      # Daten für den Pie-Chart berechnen
+      total_savings_anount <- sum(results$savings_anount) + initial_capital
+      total_interest <- sum(results$interest)
+      total_capital <- total_savings_anount + total_interest
       
       # Daten für den Pie-Chart erstellen
       pie_data <- data.frame(
-        Kategorie = c("Gesamter Sparbetrag", "Gesamte Zinsen"),
-        Wert = c(gesamter_sparbetrag, gesamte_zinsen)
+        Kategorie = c("Total Savings", "Total Interest"),
+        Wert = c(total_savings_anount, total_interest)
       )
       
-      # Pie-Chart erstellen
       ggplot(pie_data, aes(x = "", y = Wert, fill = Kategorie)) +
         geom_bar(width = 1, stat = "identity") +
         coord_polar("y", start = 0) +
-        geom_text(aes(label = paste0(round(Wert / gesamt * 100, 1), "%")), position = position_stack(vjust = 0.5)) +
-        labs(title = "Verteilung von Sparbeträgen und Zinsen", fill = "Kategorie") +
+        geom_text(aes(label = paste0(round(Wert / total_capital * 100, 1), "%")), 
+                  position = position_stack(vjust = 0.5), size = 6) +
+        labs(title = "Distribution of savings and interest") +
+        scale_fill_manual(values = c("Total Interest" = "lightgreen", "Total Savings" = "steelblue")) +
         theme_minimal() +
         theme(
           axis.title.x = element_blank(),
@@ -143,68 +177,88 @@ server <- function(input, output) {
           axis.text.y = element_blank(),
           axis.ticks = element_blank(),
           panel.grid = element_blank(),
-          panel.border = element_blank()
+          panel.border = element_blank(),
+          plot.title = element_text(size = 20, hjust = 0.5),
+          plot.title.position = "plot",
+          legend.title = element_blank(),
+          legend.text = element_text(size = 16)
         )
       
     })
     
     output$plot3 <- renderPlot({
-      max_sparbetrag <- max(ergebnisse$Sparbetrag[-nrow(ergebnisse)], na.rm = TRUE)
-      max_zinsen <- max(ergebnisse$Zinsen[-nrow(ergebnisse)], na.rm = TRUE)
-      y_max <- max(max_sparbetrag, max_zinsen)
+      # Diagramm erstellen
+      # Höchsten Werte für savings_anount und interest ermitteln
+      max_savings_anount <- max(results$savings_anount, na.rm = TRUE)
+      max_interest <- max(results$interest, na.rm = TRUE)
+      y_max <- max(max_savings_anount, max_interest)
       
       # Diagramm erstellen
-      ggplot(ergebnisse, aes(x = Jahr)) +
-        geom_line(aes(y = Sparbetrag, color = "Sparbetrag"), size = 1) +
-        geom_line(aes(y = Zinsen, color = "Zinsen"), size = 1) +
+      ggplot(results, aes(x = year)) +
+        geom_line(aes(y = savings_anount, color = "Savings Rate"), size = 1.2) +
+        geom_line(aes(y = interest, color = "Interest Rate"), size = 1.2) +
         labs(
-          title = "Entwicklung von Sparbeträgen und Zinsen über die Jahre",
-          x = "Jahr",
-          y = "Betrag in €",
-          color = "Kategorie"
+          title = "Development of the savings rate and interest rate over the years",
+          x = "Year",
+          y = "Amount [ € ]"
         ) +
+        scale_color_manual(values = c("Savings Rate" = "steelblue", "Interest Rate" = "lightgreen")) +
         scale_y_continuous(limits = c(0, y_max), labels = scales::comma_format(big.mark = ".", decimal.mark = ",")) +
-        theme_minimal()
+        theme_minimal() +
+        theme(
+          plot.title = element_text(size = 20, hjust = 0.5),
+          plot.title.position = "plot",
+          legend.text = element_text(size = 16),
+          legend.title = element_blank(),  # Titel der Legende ausblenden
+          axis.text = element_text(size = 14), # Größe der Achsenbeschriftung ändern
+          axis.title = element_text(size = 16)  # Größe des Achsentitels ändern
+        )
+      
     })
     
     output$plot4 <- renderPlot({
-      ggplot(ergebnisse, aes(x = Jahr)) +
-        geom_line(aes(y = Sparbetrag_normiert, color = "Sparbetrag_normiert"), size = 1) +
-        geom_line(aes(y = Zinsen_normiert, color = "Zinsen_normiert"), size = 1) +
+      # Diagramm erstellen
+      ggplot(results, aes(x = year)) +
+        geom_line(aes(y = savings_anount_normalized, color = "Savings Rate"), size = 1.2) +
+        geom_line(aes(y = interest_normalized, color = "Interest Rate"), size = 1.2) +
         labs(
-          title = "Entwicklung von normierten Sparbeträgen und Zinsen über die Jahre",
-          x = "Jahr",
-          y = "Normierter Wert",
-          color = "Kategorie"
+          title = "Normalized savings rate and interest rate over the years",
+          x = "Year",
+          y = "Normalized Value [ % ]"
         ) +
-        theme_minimal()
+        scale_color_manual(values = c("Savings Rate" = "steelblue", "Interest Rate" = "lightgreen")) +
+        theme_minimal() +
+        theme(
+          plot.title = element_text(size = 20, hjust = 0.5),
+          plot.title.position = "plot",
+          legend.text = element_text(size = 16),
+          legend.title = element_blank(),  # Titel der Legende ausblenden
+          axis.text = element_text(size = 14), # Größe der Achsenbeschriftung ändern
+          axis.title = element_text(size = 16)  # Größe des Achsentitels ändern
+        )
+      
     })
     
     output$plot5 <- renderPlot({
-      # Bestimmen Sie die Jahre, in denen die Linie Kapital_Ende die Schwellenwerte erreicht
-      thresholds <- seq(100000, 1000000, by = 100000)
-      years_at_threshold <- numeric(length(thresholds))
+
+    })
+    
+    output$table1 <- renderTable({
+      table_render <- complete_data %>%
+        select(year, capital_start, savings_anount, interest, capital_end) %>%
+        mutate(
+          `Capital Beginning of the Year [€]` = format(as.numeric(capital_start), nsmall = 2, big.mark = '.', decimal.mark = ','),
+          `Savings Amount per Year [€]` = format(as.numeric(savings_anount), nsmall = 2, big.mark = '.', decimal.mark = ','),
+          `Generated Interest per Year [€]` = format(as.numeric(interest), nsmall = 2, big.mark = '.', decimal.mark = ','),
+          `Capital at the end of the Year [€]` = format(as.numeric(capital_end), nsmall = 2, big.mark = '.', decimal.mark = ',')
+        ) %>%
+        select(year, `Capital Beginning of the Year [€]`, `Savings Amount per Year [€]`, `Generated Interest per Year [€]`, `Capital at the end of the Year [€]`)
       
-      for (i in 1:length(thresholds)) {
-        years_at_threshold[i] <- min(ergebnisse$Jahr[ergebnisse$Kapital_Ende >= thresholds[i]], na.rm = TRUE)
-      }
+      # Umbenennung der Spalten
+      colnames(table_render) <- c("Year", "Capital Beginning of the Year [€]", "Savings Amount per Year [€]", "Generated Interest per Year [€]", "Capital at the end of the Year [€]")
       
-      # Erstellen Sie ein Dataframe für die Segmente
-      segment_data <- data.frame(
-        x = rep(min(ergebnisse$Jahr), length(thresholds)),
-        xend = years_at_threshold,
-        y = thresholds,
-        yend = thresholds
-      )
+      table_render
       
-      # Diagramm erstellen
-      ggplot(ergebnisse, aes(x = Jahr, y = Kapital_Ende)) +
-        geom_line(color = "blue") +
-        geom_segment(data = segment_data, aes(x = x, xend = xend, y = y, yend = yend), linetype = "dashed", color = "red") +
-        geom_segment(data = segment_data, aes(x = xend, xend = xend, y = 0, yend = y), linetype = "dashed", color = "red") +
-        labs(title = "Entwicklung des Kapitals über die Zeit", x = "Jahr", y = "Betrag in €") +
-        scale_y_continuous(labels = scales::comma_format(big.mark = ".", decimal.mark = ",")) +
-        theme_minimal()
     })
   })
 }

@@ -1,4 +1,5 @@
 # Load libraries
+library(dplyr)
 library(ggplot2)
 library(gridExtra)
 library(lubridate)
@@ -173,6 +174,22 @@ ggplot(results, aes(x = year)) +
     axis.text = element_text(size = 14), # Größe der Achsenbeschriftung ändern
     axis.title = element_text(size = 16)  # Größe des Achsentitels ändern
   )
+
+table_render <- complete_data %>%
+  select(year, capital_start, savings_anount, interest, capital_end) %>%
+  mutate(
+    `Capital Beginning of the Year [€]` = format(as.numeric(capital_start), nsmall = 2, big.mark = '.', decimal.mark = ','),
+    `Savings Amount per Year [€]` = format(as.numeric(savings_anount), nsmall = 2, big.mark = '.', decimal.mark = ','),
+    `Generated Interest per Year [€]` = format(as.numeric(interest), nsmall = 2, big.mark = '.', decimal.mark = ','),
+    `Capital at the end of the Year [€]` = format(as.numeric(capital_end), nsmall = 2, big.mark = '.', decimal.mark = ',')
+  ) %>%
+  select(year, `Capital Beginning of the Year [€]`, `Savings Amount per Year [€]`, `Generated Interest per Year [€]`, `Capital at the end of the Year [€]`)
+
+# Umbenennung der Spalten
+colnames(table_render) <- c("Year", "Capital Beginning of the Year [€]", "Savings Amount per Year [€]", "Generated Interest per Year [€]", "Capital at the end of the Year [€]")
+
+table_render
+
 
 
 # Daten für die Tabelle erstellen, TO DO: Tabelle optimieren
