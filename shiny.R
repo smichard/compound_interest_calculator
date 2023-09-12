@@ -32,11 +32,11 @@ ui <- fluidPage(
     mainPanel(
       tabsetPanel(
         tabPanel("Gesamtkapital", plotOutput("plot1")),
-        tabPanel("Verteilung", plotOutput("plot2")),
+        tabPanel("Verteilung", plotOutput("plot2"), tableOutput("table1")),
         tabPanel("Sparbeträge und Zinsen", plotOutput("plot3")),
         tabPanel("Normierte Werte", plotOutput("plot4")),
         tabPanel("Kapitalentwicklung", plotOutput("plot5")),
-        tabPanel("Tabelle", tableOutput("table1"))
+        tabPanel("Tabelle", tableOutput("table2"))
       )
     )
   )
@@ -244,7 +244,17 @@ server <- function(input, output) {
     })
     
     output$table1 <- renderTable({
-      table_render <- complete_data %>%
+      table_summary <- data.frame(
+        Category = c("Total Capital [ € ]", "Total Savings [ € ]", "Total Interests [ € ]"),
+        Value = c(format(round(total_capital), big.mark = ".", decimal.mark = ",", scientific = FALSE),
+                  format(round(total_savings_anount), big.mark = ".", decimal.mark = ",", scientific = FALSE),
+                  format(round(total_interest), big.mark = ".", decimal.mark = ",", scientific = FALSE))
+      )
+      table_summary
+    }, colnames = FALSE)
+    
+    output$table2 <- renderTable({
+      table_all_values <- complete_data %>%
         select(year, capital_start, savings_anount, interest, capital_end) %>%
         mutate(
           `Capital Beginning of the Year [€]` = format(as.numeric(capital_start), nsmall = 2, big.mark = '.', decimal.mark = ','),
@@ -254,12 +264,13 @@ server <- function(input, output) {
         ) %>%
         select(year, `Capital Beginning of the Year [€]`, `Savings Amount per Year [€]`, `Generated Interest per Year [€]`, `Capital at the end of the Year [€]`)
       
+      table_all_values$`Capital Beginning of the Year [€]`[nrow(table_all_values)] <- ""
       # Umbenennung der Spalten
-      colnames(table_render) <- c("Year", "Capital Beginning of the Year [€]", "Savings Amount per Year [€]", "Generated Interest per Year [€]", "Capital at the end of the Year [€]")
+      #colnames(table_render) <- c("Year", "Capital Beginning of the Year [€]", "Savings Amount per Year [€]", "Generated Interest per Year [€]", "Capital at the end of the Year [€]")
       
-      table_render
-      
+      table_all_values
     })
+    
   })
 }
 

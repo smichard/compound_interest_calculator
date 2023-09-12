@@ -7,11 +7,11 @@ library(tibble)
 
 # Input parameters
 start_date <- ymd("2024-01-01")
-initial_capital <- 20000
-savings_rate <- 1000
+initial_capital <- 5000
+savings_rate <- 100
 savings_intervall <- "monthly"  # oder "yearly"
-adjustment_rate <- 0.05  # 5% als Dezimalzahl
-interest_rate <- 0.125  # 3% als Dezimalzahl
+adjustment_rate <- 0  # 5% als Dezimalzahl
+interest_rate <- 0.1  # 3% als Dezimalzahl
 investment_period <- 20  # in yearen
 savings_suspension <- NA  # Optionaler Wert
 target_value <- NA  # Optionaler Wert
@@ -175,7 +175,7 @@ ggplot(results, aes(x = year)) +
     axis.title = element_text(size = 16)  # Größe des Achsentitels ändern
   )
 
-table_render <- complete_data %>%
+table_all_values <- complete_data %>%
   select(year, capital_start, savings_anount, interest, capital_end) %>%
   mutate(
     `Capital Beginning of the Year [€]` = format(as.numeric(capital_start), nsmall = 2, big.mark = '.', decimal.mark = ','),
@@ -186,31 +186,22 @@ table_render <- complete_data %>%
   select(year, `Capital Beginning of the Year [€]`, `Savings Amount per Year [€]`, `Generated Interest per Year [€]`, `Capital at the end of the Year [€]`)
 
 # Umbenennung der Spalten
-colnames(table_render) <- c("Year", "Capital Beginning of the Year [€]", "Savings Amount per Year [€]", "Generated Interest per Year [€]", "Capital at the end of the Year [€]")
+table_all_values$`Capital Beginning of the Year [€]`[nrow(table_all_values)] <- ""
+#colnames(table_render) <- c("Year", "Capital Beginning of the Year [€]", "Savings Amount per Year [€]", "Generated Interest per Year [€]", "Capital at the end of the Year [€]")
 
-table_render
+table_all_values
 
 
-
-# Daten für die Tabelle erstellen, TO DO: Tabelle optimieren
-table_data <- data.frame(
-  Category_gssgsd = c("Total Capital [ € ]", "Total Savings [ € ]", "Total Interests [ € ]"),
-  Value_gffgdgd = c(format(round(total_capital), big.mark = ".", decimal.mark = ",", scientific = FALSE),
-                    format(round(total_savings_anount), big.mark = ".", decimal.mark = ",", scientific = FALSE),
-                    format(round(total_interest), big.mark = ".", decimal.mark = ",", scientific = FALSE))
+# Summary Table
+table_summary <- data.frame(
+  Category = c("Total Capital [ € ]", "Total Savings [ € ]", "Total Interests [ € ]"),
+  Value = c(format(round(total_capital), big.mark = ".", decimal.mark = ",", scientific = FALSE),
+            format(round(total_savings_anount), big.mark = ".", decimal.mark = ",", scientific = FALSE),
+            format(round(total_interest), big.mark = ".", decimal.mark = ",", scientific = FALSE))
 )
 
-# Tabelle erstellen
-table_grob <- tableGrob(table_data, 
-                        rows = NULL, 
-                        theme = ttheme_minimal(
-                          base_size = 18, # Größe des Textes ändern
-                          core = list(just = c("left", "right")), # Textausrichtung für beide Spalten
-                          colhead = list(fg_params = list(col = "transparent")) # Überschriften ausblenden
-                        ))
-
-# Tabelle anzeigen
-grid.arrange(table_grob)
+# Ausgabe der Tabelle ohne Spaltenüberschriften und ohne NULL
+invisible(apply(table_summary, 1, function(row) cat(paste(row, collapse = "\t"), "\n")))
 
 # Diagramm erstellen
 # Bestimmen Sie die yeare, in denen die Linie capital_end die Schwellenwerte erreicht

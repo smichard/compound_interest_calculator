@@ -5,11 +5,11 @@ library(ggplot2)
 
 # Eingangsparameter
 start_datum <- ymd("2024-01-01")
-anfangskapital <- 20000
-sparrate <- 1000
+anfangskapital <- 5000
+sparrate <- 100
 sparintervall <- "monatlich"  # oder "jährlich"
-dynamik <- 0.05  # 5% als Dezimalzahl
-zinssatz <- 0.125  # 3% als Dezimalzahl
+dynamik <- 0  # 5% als Dezimalzahl
+zinssatz <- 0.1  # 3% als Dezimalzahl
 Dauer <- 20  # in Jahren
 Aussetzen_des_Sparbetrags <- NA  # Optionaler Wert
 Zielwert <- NA  # Optionaler Wert
