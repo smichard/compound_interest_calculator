@@ -6,7 +6,7 @@ RUN R -e "install.packages(c('dplyr', 'ggplot2', 'lubridate', 'tibble'), repos='
 
 # Kopieren Sie die Shiny-App-Dateien in den Container
 # Hier wird angenommen, dass Ihre App-Dateien (ui.R und server.R) im aktuellen Verzeichnis liegen
-COPY /path-to-your-shiny-app/ /srv/shiny-server/myapp/
+COPY /shiny_app/ /srv/shiny-server/myapp/
 
 # Ändern Sie die Berechtigungen, damit Shiny-Server darauf zugreifen kann
 RUN chown -R shiny:shiny /srv/shiny-server/myapp
