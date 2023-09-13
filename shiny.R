@@ -33,8 +33,8 @@ ui <- fluidPage(
       tabsetPanel(
         tabPanel("Overview", plotOutput("plot1")),
         tabPanel("Distribution", plotOutput("plot2"), tableOutput("table1")),
-        tabPanel("Savings Rate", plotOutput("plot3")),
-        tabPanel("Normalized Values", plotOutput("plot4")),
+        tabPanel("Savings Rate", plotOutput("plot3"), textOutput("crosspoint_message")),
+        tabPanel("Normalized Values", plotOutput("plot4"), textOutput("crosspoint_message_2")),
         tabPanel("Goals", plotOutput("plot5"), plotOutput("plot6"), textOutput("target_message")),
         tabPanel("Values", tableOutput("table2"))
       )
@@ -68,6 +68,7 @@ server <- function(input, output) {
     investment_period <- input_values()$investment_period
     savings_suspension <- input_values()$savings_suspension
     target_value <- input_values()$target_value
+    intersection_year <- NA
     
     results <- tibble(
       year = year(start_date) + 0:(investment_period - 1),
@@ -144,6 +145,29 @@ server <- function(input, output) {
     total_interest <- sum(results$interest)
     total_capital <- total_savings_anount + total_interest
     
+    # 1. Find the Intersection Point
+    for (i in 1:(nrow(results) - 1)) {
+      if (results$savings_anount[i] > results$interest[i] && results$savings_anount[i+1] <= results$interest[i+1]) {
+        # Interpolate the exact year of intersection
+        x1 <- results$year[i]
+        x2 <- results$year[i+1]
+        y1_savings <- results$savings_anount[i]
+        y2_savings <- results$savings_anount[i+1]
+        y1_interest <- results$interest[i]
+        y2_interest <- results$interest[i+1]
+        
+        intersection_year <- x1 + (x2 - x1) * (y1_savings - y1_interest) / ((y2_interest - y1_interest) - (y2_savings - y1_savings))
+        break
+      }
+    }
+    
+    # 2. Generate the Cross Point String
+    if (!is.na(intersection_year)) {
+      crosspoint_string <- paste("From", floor(intersection_year), "the growth is mainly driven by the generated interests")
+    } else {
+      crosspoint_string <- NA
+    }
+    
     # Überprüfen Sie, ob target_value nicht NA ist
     if (!is.na(target_value)) {
       # Interpolieren Sie, um das Jahr zu finden, in dem target_value erreicht wird
@@ -204,18 +228,14 @@ server <- function(input, output) {
     })
     
     output$plot3 <- renderPlot({
-      # Diagramm erstellen
-      # Höchsten Werte für savings_anount und interest ermitteln
       max_savings_anount <- max(results$savings_anount, na.rm = TRUE)
       max_interest <- max(results$interest, na.rm = TRUE)
       y_max <- max(max_savings_anount, max_interest)
-      
-      # Diagramm erstellen
-      ggplot(results, aes(x = year)) +
+      plot_savings <- ggplot(results, aes(x = year)) +
         geom_line(aes(y = savings_anount, color = "Savings Rate"), size = 1.2) +
         geom_line(aes(y = interest, color = "Generated Interests"), size = 1.2) +
         labs(
-          title = "Development of the savings rate and generated interests per year",
+          title = "Development of the savings rate and generated interest per year",
           x = "Year",
           y = "Amount [ € ]"
         ) +
@@ -226,16 +246,21 @@ server <- function(input, output) {
           plot.title = element_text(size = 20, hjust = 0.5),
           plot.title.position = "plot",
           legend.text = element_text(size = 16),
-          legend.title = element_blank(),  # Titel der Legende ausblenden
-          axis.text = element_text(size = 14), # Größe der Achsenbeschriftung ändern
-          axis.title = element_text(size = 16)  # Größe des Achsentitels ändern
+          legend.title = element_blank(),
+          axis.text = element_text(size = 14),
+          axis.title = element_text(size = 16)
         )
       
+      if (!is.na(intersection_year)) {
+        plot_savings <- plot_savings +
+          geom_vline(aes(xintercept = intersection_year), linetype="dashed", size=1.0, color="orange") +
+          annotate("text", x = intersection_year, y = min(results$savings_anount), label = as.character(floor(intersection_year)), size = 5, hjust = 1.2, vjust = 7.8 )
+      }
+      plot_savings
     })
     
     output$plot4 <- renderPlot({
-      # Diagramm erstellen
-      ggplot(results, aes(x = year)) +
+      plot_normalized <- ggplot(results, aes(x = year)) +
         geom_line(aes(y = savings_anount_normalized, color = "Savings Rate"), size = 1.2) +
         geom_line(aes(y = interest_normalized, color = "Generated Interests"), size = 1.2) +
         labs(
@@ -249,11 +274,17 @@ server <- function(input, output) {
           plot.title = element_text(size = 20, hjust = 0.5),
           plot.title.position = "plot",
           legend.text = element_text(size = 16),
-          legend.title = element_blank(),  # Titel der Legende ausblenden
-          axis.text = element_text(size = 14), # Größe der Achsenbeschriftung ändern
-          axis.title = element_text(size = 16)  # Größe des Achsentitels ändern
+          legend.title = element_blank(),
+          axis.text = element_text(size = 14),
+          axis.title = element_text(size = 16)
         )
       
+      if (!is.na(intersection_year)) {
+        plot_normalized <- plot_normalized +
+          geom_vline(aes(xintercept = intersection_year), linetype="dashed", size=1.0, color="orange") +
+          annotate("text", x = intersection_year, y = min(results$savings_anount_normalized), label = as.character(floor(intersection_year)), size = 5, hjust = 1.2, vjust = 5.0 )
+      }
+      plot_normalized
     })
     
     output$plot5 <- renderPlot({
@@ -287,7 +318,7 @@ server <- function(input, output) {
         # Diagramm erstellen
         ggplot(results, aes(x = year, y = capital_end)) +
           geom_line(color = "lightgreen", size= 1.2) +
-          geom_segment(data = segment_data, aes(x = xend, xend = xend, y = 0, yend = y), linetype = "dashed", color = "steelblue") +
+          geom_segment(data = segment_data, aes(x = xend, xend = xend, y = 0, yend = y), linetype = "dashed", color = "orange") +
           geom_text(data = segment_data[1, ], aes(x = xend, y = max(results$capital_end) * 0.05, label = sprintf("%.1f", time_to_first_threshold)), check_overlap = TRUE, size = 5, hjust = 1.2, vjust = 0.6) +  # Text für den ersten Schwellenwert hinzufügen
           geom_text(data = segment_data[-1, ], aes(x = xend, y = max(results$capital_end) * 0.05, label = sprintf("%.1f", diff)), check_overlap = TRUE, size = 5, hjust = 1.2, vjust = 0.6) +  # Text für die anderen Schwellenwerte hinzufügen
           labs(title = "Development of the total capital and consideration of characteristic anchor points.", x = "Year", y = "Value [ € ]") +
@@ -320,9 +351,9 @@ server <- function(input, output) {
         # Fügen Sie horizontale und vertikale Linien in das Diagramm ein
         ggplot(results, aes(x = year, y = capital_end)) +
           geom_line(color = "lightgreen", size= 1.2) +
-          geom_hline(yintercept = target_value, linetype = "dashed", color = "steelblue", size = 1) +
-          geom_vline(xintercept = year_at_target, linetype = "dashed", color = "steelblue", size = 1) +
-          geom_text(aes(x = year_at_target, y = 0, label = as.character(floor(year_at_target))), size = 5, hjust = 1.2, vjust = 0.6, color = "steelblue") +
+          geom_hline(yintercept = target_value, linetype = "dashed", color = "orange", size = 1) +
+          geom_vline(xintercept = year_at_target, linetype = "dashed", color = "orange", size = 1) +
+          geom_text(aes(x = year_at_target, y = 0, label = as.character(floor(year_at_target))), size = 5, hjust = 1.2, vjust = 0.6, color = "black") +
           labs(title = "Total capital and point in time of target value", x = "Year", y = "Value [ € ]") +
           scale_y_continuous(labels = scales::comma_format(big.mark = ".", decimal.mark = ",")) +
           theme_minimal() +
@@ -334,6 +365,18 @@ server <- function(input, output) {
             axis.text = element_text(size = 14),
             axis.title = element_text(size = 16)
           )
+      }
+    })
+    
+    output$crosspoint_message <- renderText({
+      if (!is.na(crosspoint_string)) {
+        crosspoint_string
+      }
+    })
+    
+    output$crosspoint_message_2 <- renderText({
+      if (!is.na(crosspoint_string)) {
+        crosspoint_string
       }
     })
     
