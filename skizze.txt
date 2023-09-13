@@ -28,4 +28,9 @@ To Do:
 - [x] Funktion wann wird Zielwert erreicht
 - [x] Shiny App, Input Parameter anpassen
 - [x] Shiny App Tabelle darstellen
-- [ ] interest rate umbennen in der Legende zu Generated Interest
+- [x] interest rate umbennen in der Legende zu Generated Interest
+- [ ] Containerfile, Cotainer bauen
+- [ ] GitHub
+- [ ] CI / CD
+- [ ] Google Cloud Run
+- [ ] Blog Artikel
