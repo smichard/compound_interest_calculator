@@ -348,6 +348,8 @@ server <- function(input, output) {
     output$plot6 <- renderPlot({
       # Überprüfen Sie, ob ein Datum ermittelt wurde
       if (!is.na(target_value)) {
+        if (!is.na(year_at_target)) {
+        
         # Fügen Sie horizontale und vertikale Linien in das Diagramm ein
         ggplot(results, aes(x = year, y = capital_end)) +
           geom_line(color = "lightgreen", size= 1.2) +
@@ -365,6 +367,7 @@ server <- function(input, output) {
             axis.text = element_text(size = 14),
             axis.title = element_text(size = 16)
           )
+        }
       }
     })
     
