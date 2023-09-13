@@ -147,13 +147,13 @@ y_max <- max(max_savings_anount, max_interest)
 # Diagramm erstellen
 ggplot(results, aes(x = year)) +
   geom_line(aes(y = savings_anount, color = "Savings Rate"), size = 1.2) +
-  geom_line(aes(y = interest, color = "Interest Rate"), size = 1.2) +
+  geom_line(aes(y = interest, color = "Generated Interests"), size = 1.2) +
   labs(
-    title = "Development of the savings rate and interest rate over the years",
+    title = "Development of the savings rate and generated interest per year",
     x = "Year",
     y = "Amount [ € ]"
   ) +
-  scale_color_manual(values = c("Savings Rate" = "steelblue", "Interest Rate" = "lightgreen")) +
+  scale_color_manual(values = c("Savings Rate" = "steelblue", "Generated Interests" = "lightgreen")) +
   scale_y_continuous(limits = c(0, y_max), labels = scales::comma_format(big.mark = ".", decimal.mark = ",")) +
   theme_minimal() +
   theme(
@@ -168,13 +168,13 @@ ggplot(results, aes(x = year)) +
 # Diagramm erstellen
 ggplot(results, aes(x = year)) +
   geom_line(aes(y = savings_anount_normalized, color = "Savings Rate"), size = 1.2) +
-  geom_line(aes(y = interest_normalized, color = "Interest Rate"), size = 1.2) +
+  geom_line(aes(y = interest_normalized, color = "Generated Interests"), size = 1.2) +
   labs(
-    title = "Normalized savings rate and interest rate over the years",
+    title = "Normalized savings rate and generated interests per year",
     x = "Year",
     y = "Normalized Value [ % ]"
   ) +
-  scale_color_manual(values = c("Savings Rate" = "steelblue", "Interest Rate" = "lightgreen")) +
+  scale_color_manual(values = c("Savings Rate" = "steelblue", "Generated Interests" = "lightgreen")) +
   theme_minimal() +
   theme(
     plot.title = element_text(size = 20, hjust = 0.5),
