@@ -135,7 +135,7 @@ server <- function(input, output) {
       results$capital_end[i] <- round(capital_end, 2)
     }
     
-    # Summenzeile hinzufügen, TO DO: Vergleich Results und complete data
+    # Summenzeile hinzufügen
     complete_data <- results
     complete_data <- rbind(complete_data, c('Sum', NA, round(sum(complete_data$savings_anount), 2), round(sum(complete_data$interest), 2), NA, NA, NA, NA, round(complete_data$capital_end[investment_period], 2)))
     #results <- rbind(results, c(NA, NA, round(sum(results$savings_anount), 2), round(sum(results$interest), 2), NA, NA, NA, NA, round(results$capital_end[investment_period], 2)))
@@ -321,7 +321,7 @@ server <- function(input, output) {
           geom_segment(data = segment_data, aes(x = xend, xend = xend, y = 0, yend = y), linetype = "dashed", color = "orange") +
           geom_text(data = segment_data[1, ], aes(x = xend, y = max(results$capital_end) * 0.05, label = sprintf("%.1f", time_to_first_threshold)), check_overlap = TRUE, size = 5, hjust = 1.2, vjust = 0.6) +  # Text für den ersten Schwellenwert hinzufügen
           geom_text(data = segment_data[-1, ], aes(x = xend, y = max(results$capital_end) * 0.05, label = sprintf("%.1f", diff)), check_overlap = TRUE, size = 5, hjust = 1.2, vjust = 0.6) +  # Text für die anderen Schwellenwerte hinzufügen
-          labs(title = "Development of the total capital and consideration of characteristic anchor points.", x = "Year", y = "Value [ € ]") +
+          labs(title = "Development of total capital and consideration of characteristic anchor points", x = "Year", y = "Value [ € ]") +
           scale_y_continuous(labels = scales::comma_format(big.mark = ".", decimal.mark = ",")) +
           theme_minimal() +
           theme(
