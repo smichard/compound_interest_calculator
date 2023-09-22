@@ -8,4 +8,4 @@ RUN chown -R shiny:shiny /srv/shiny-server/app
 
 EXPOSE 3838
 
-CMD ["/usr/bin/shiny-server.sh"]
+CMD ["/opt/shiny-server/bin/shiny-server"]
