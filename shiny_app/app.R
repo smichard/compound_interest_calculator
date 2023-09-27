@@ -2,6 +2,7 @@
 library(dplyr)
 library(ggplot2)
 #library(gridExtra)
+library(markdown)
 library(lubridate)
 library(shiny)
 library(tibble)
@@ -36,7 +37,8 @@ ui <- fluidPage(
         tabPanel("Savings Rate", plotOutput("plot3"), textOutput("crosspoint_message")),
         tabPanel("Normalized Values", plotOutput("plot4"), textOutput("crosspoint_message_2")),
         tabPanel("Goals", plotOutput("plot5"), plotOutput("plot6"), textOutput("target_message")),
-        tabPanel("Values", tableOutput("table2"))
+        tabPanel("Values", tableOutput("table2")),
+        tabPanel("Instructions", includeMarkdown("instructions.md"))
       )
     )
   )
@@ -45,7 +47,7 @@ ui <- fluidPage(
 # Server definieren
 server <- function(input, output) {
   input_values <- reactiveVal(NULL)
-  
+
   observeEvent(input$goButton, {
     input_values(list(
       start_date = ymd(paste0(input$start_date, "-01-01")),

@@ -1,6 +1,6 @@
 FROM rocker/shiny:latest
 
-RUN R -e "install.packages(c('dplyr', 'ggplot2', 'lubridate', 'tibble'), repos='https://cloud.r-project.org/')"
+RUN R -e "install.packages(c('dplyr', 'ggplot2', 'markdown', 'lubridate', 'tibble'), repos='https://cloud.r-project.org/')"
 
 RUN rm -rf /srv/shiny-server/*
 
