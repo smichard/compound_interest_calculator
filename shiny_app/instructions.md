@@ -27,4 +27,5 @@ The "Capital building calculator" Shiny app provides a tool for users to visuali
 2. Click the "Calculate" button.
 3. Navigate through the tabs in the main panel to view the generated diagrams and tables based on your input.  
   
-By using this app, users can gain insights into how their capital will grow over time, understand the impact of different financial decisions, and set realistic financial goals.
+By using this app, users can gain insights into how their capital will grow over time, understand the impact of different financial decisions, and set realistic financial goals.  
+The source code can be found on GitHub - [link](https://github.com/smichard/compound_interest_calculator).
