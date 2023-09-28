@@ -9,12 +9,12 @@ library(tibble)
 start_date <- ymd("2024-01-01")
 initial_capital <- 100000
 savings_rate <- 1000
-savings_intervall <- "monthly"  # oder "yearly"
-adjustment_rate <- 0  # 5% als Dezimalzahl
-interest_rate <- 0.075  # 3% als Dezimalzahl
-investment_period <- 30  # in yearen
-savings_suspension <- NA  # Optionaler Wert
-target_value <- NA  # Optionaler Wert
+savings_intervall <- "monthly"  # or "yearly"
+adjustment_rate <- 0  # as decimal number
+interest_rate <- 0.075  # as decimal number
+investment_period <- 30  # in years
+savings_suspension <- NA  # Optional value
+target_value <- NA  # Optional value
 intersection_year <- NA
 
 # Create table
@@ -83,35 +83,34 @@ for (i in 1:investment_period) {
   results$capital_end[i] <- round(capital_end, 2)
 }
 
-# Summenzeile hinzufügen, TO DO: Vergleich Results und complete data
+# Add sum row
 complete_data <- results
 complete_data <- rbind(complete_data, c('Sum', NA, round(sum(complete_data$savings_anount), 2), round(sum(complete_data$interest), 2), NA, NA, NA, NA, round(complete_data$capital_end[investment_period], 2)))
-#results <- rbind(results, c(NA, NA, round(sum(results$savings_anount), 2), round(sum(results$interest), 2), NA, NA, NA, NA, round(results$capital_end[investment_period], 2)))
 
-# Diagramm erstellen
+# Create diagram
 ggplot(results, aes(x = year)) +
   geom_line(aes(y = accumulated_capital, color = "Savings"), size = 1.2) +
   geom_line(aes(y = capital_end, color = "Total Capital"), size = 1.2) +
   labs(title = "Capital growth over time", x = "Year", y = "Amount [ € ]") +
   scale_y_continuous(labels = scales::comma_format(big.mark = ".", decimal.mark = ",")) +
   scale_color_manual(values = c("Savings" = "steelblue", "Total Capital" = "lightgreen"),
-                     breaks = c("Total Capital", "Savings")) + # Reihenfolge in der Legende ändern
+                     breaks = c("Total Capital", "Savings")) + # Change order in the legend
   guides(color = guide_legend(title = NULL)) +
   theme_minimal() +
   theme(
     plot.title = element_text(size = 20, hjust = 0.5),
     plot.title.position = "plot",
     legend.text = element_text(size = 16),
-    axis.text = element_text(size = 14), # Größe der Achsenbeschriftung ändern
-    axis.title = element_text(size = 16)  # Größe des Achsentitels ändern
+    axis.text = element_text(size = 14), # Change size of axis labeling
+    axis.title = element_text(size = 16)  # Change size of axis title
   )
 
-# Daten für den Pie-Chart berechnen
+# Calculate data for the pie chart
 total_savings_anount <- sum(results$savings_anount) + initial_capital
 total_interest <- sum(results$interest)
 total_capital <- total_savings_anount + total_interest
 
-# Daten für den Pie-Chart erstellen
+# Create data for the pie chart
 pie_data <- data.frame(
   Kategorie = c("Total Savings", "Total Interest"),
   Wert = c(total_savings_anount, total_interest)
@@ -139,8 +138,8 @@ ggplot(pie_data, aes(x = "", y = Wert, fill = Kategorie)) +
     legend.text = element_text(size = 16)
   )
 
-# Diagramm erstellen
-# Höchsten Werte für savings_anount und interest ermitteln
+# Create diagram
+# Determine highest values for savings_anount and interest
 max_savings_anount <- max(results$savings_anount, na.rm = TRUE)
 max_interest <- max(results$interest, na.rm = TRUE)
 y_max <- max(max_savings_anount, max_interest)
@@ -232,7 +231,7 @@ table_all_values <- complete_data %>%
   ) %>%
   select(year, `Capital Beginning of the Year [€]`, `Savings Amount per Year [€]`, `Generated Interest per Year [€]`, `Capital at the end of the Year [€]`)
 
-# Umbenennung der Spalten
+# Rename columns
 table_all_values$`Capital Beginning of the Year [€]`[nrow(table_all_values)] <- ""
 #colnames(table_render) <- c("Year", "Capital Beginning of the Year [€]", "Savings Amount per Year [€]", "Generated Interest per Year [€]", "Capital at the end of the Year [€]")
 
@@ -247,11 +246,11 @@ table_summary <- data.frame(
             format(round(total_interest), big.mark = ".", decimal.mark = ",", scientific = FALSE))
 )
 
-# Ausgabe der Tabelle ohne Spaltenüberschriften und ohne NULL
+# Output of the table without column headers and without NULL
 invisible(apply(table_summary, 1, function(row) cat(paste(row, collapse = "\t"), "\n")))
 
-# Diagramm erstellen
-# Bestimmen Sie die Jahre, in denen die Linie capital_end die Schwellenwerte erreicht
+# Create diagram
+# Determine the years when the capital_end line reaches the threshold values
 thresholds <- seq(100000, 1000000, by = 100000)
 years_at_threshold <- numeric(length(thresholds))
 
@@ -261,7 +260,7 @@ for (i in 1:length(thresholds)) {
 }
 
 if (!all(is.na(years_at_threshold))) {
-  # Erstellen Sie ein Dataframe für die Segmente
+  # Create a dataframe for the segments
   segment_data <- data.frame(
     x = rep(min(results$year), length(thresholds)),
     xend = years_at_threshold,
@@ -271,18 +270,18 @@ if (!all(is.na(years_at_threshold))) {
   
   segment_data <- na.omit(segment_data)
   
-  # Abstand zwischen den Jahren berechnen
+  # Calculate difference between the years
   segment_data$diff <- c(NA, diff(segment_data$xend))
   
-  # Zeitraum bis zum Erreichen der ersten 100.000 Euro berechnen
+  # Calculate period until reaching the first 100,000 Euros
   time_to_first_threshold <- segment_data$xend[1] - segment_data$x[1]
   
-  # Diagramm erstellen
+  # Create diagram
   ggplot(results, aes(x = year, y = capital_end)) +
     geom_line(color = "lightgreen", size= 1.2) +
     geom_segment(data = segment_data, aes(x = xend, xend = xend, y = 0, yend = y), linetype = "dashed", color = "orange") +
-    geom_text(data = segment_data[1, ], aes(x = xend, y = max(results$capital_end) * 0.05, label = sprintf("%.1f", time_to_first_threshold)), check_overlap = TRUE, size = 5, hjust = 1.2, vjust = 0.6) +  # Text für den ersten Schwellenwert hinzufügen
-    geom_text(data = segment_data[-1, ], aes(x = xend, y = max(results$capital_end) * 0.05, label = sprintf("%.1f", diff)), check_overlap = TRUE, size = 5, hjust = 1.2, vjust = 0.6) +  # Text für die anderen Schwellenwerte hinzufügen
+    geom_text(data = segment_data[1, ], aes(x = xend, y = max(results$capital_end) * 0.05, label = sprintf("%.1f", time_to_first_threshold)), check_overlap = TRUE, size = 5, hjust = 1.2, vjust = 0.6) +  # Add text for the first threshold value
+    geom_text(data = segment_data[-1, ], aes(x = xend, y = max(results$capital_end) * 0.05, label = sprintf("%.1f", diff)), check_overlap = TRUE, size = 5, hjust = 1.2, vjust = 0.6) +  # Add text for the other threshold values
     labs(title = "Development of the total capital and consideration of characteristic anchor points.", x = "Year", y = "Value [ € ]") +
     scale_y_continuous(labels = scales::comma_format(big.mark = ".", decimal.mark = ",")) +
     theme_minimal() +
@@ -290,24 +289,23 @@ if (!all(is.na(years_at_threshold))) {
       plot.title = element_text(size = 20, hjust = 0.5),
       plot.title.position = "plot",
       legend.text = element_text(size = 16),
-      legend.title = element_blank(),  # Titel der Legende ausblenden
-      axis.text = element_text(size = 14), # Größe der Achsenbeschriftung ändern
-      axis.title = element_text(size = 16)  # Größe des Achsentitels ändern
+      legend.title = element_blank(),  # Hide the title of the legend
+      axis.text = element_text(size = 14), # Change size of axis labeling
+      axis.title = element_text(size = 16)  # Change size of axis title
     )  
 }
 
-# Überprüfen Sie, ob target_value nicht NA ist
+# Check if target_value is not NA
 if (!is.na(target_value)) {
-  # Interpolieren Sie, um das Jahr zu finden, in dem target_value erreicht wird
+  # Interpolate to find the year when target_value is reached
   interpolated_target <- approx(results$capital_end, results$year, xout = target_value)
   
-  # Datum, an dem target_value erreicht wird
-  year_at_target <- interpolated_target$y  # Abrunden ohne Nachkommastellen
+  # Date when target_value is reached
+  year_at_target <- interpolated_target$y 
 }
 
-# Überprüfen Sie, ob ein Datum ermittelt wurde
+# Check if target_value is not NA
 if (!is.na(target_value)) {
-  # Fügen Sie horizontale und vertikale Linien in das Diagramm ein
   target_plot <- ggplot(results, aes(x = year, y = capital_end)) +
     geom_line(color = "lightgreen", size= 1.2) +
     geom_hline(yintercept = target_value, linetype = "dashed", color = "orange", size = 1) +
@@ -377,7 +375,7 @@ if (length(double_target) != 0) {
   # Create a data frame for labeling doubling years
   label_data <- data.frame(year = doubling_years, label = floor(doubling_years))
   
-  # Create the original plot
+  # Create the plot
   ggplot(results, aes(x = year, y = capital_end)) +
     geom_line(color = "lightgreen", size = 1.2) +
     geom_vline(xintercept = doubling_years, linetype = "dashed", color = "orange", size = 1) +

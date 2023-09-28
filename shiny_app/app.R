@@ -1,4 +1,4 @@
-# Bibliotheken laden
+# Load libraries
 library(dplyr)
 library(ggplot2)
 #library(gridExtra)
@@ -7,7 +7,7 @@ library(lubridate)
 library(shiny)
 library(tibble)
 
-# UI definieren
+# define UI
 ui <- fluidPage(
   titlePanel("Capital building calculator"),
   
@@ -44,7 +44,7 @@ ui <- fluidPage(
   )
 )
 
-# Server definieren
+# define server
 server <- function(input, output) {
   input_values <- reactiveVal(NULL)
 
@@ -137,12 +137,11 @@ server <- function(input, output) {
       results$capital_end[i] <- round(capital_end, 2)
     }
     
-    # Summenzeile hinzufügen
+    # add sum row
     complete_data <- results
     complete_data <- rbind(complete_data, c('Sum', NA, round(sum(complete_data$savings_anount), 2), round(sum(complete_data$interest), 2), NA, NA, NA, NA, round(complete_data$capital_end[investment_period], 2)))
-    #results <- rbind(results, c(NA, NA, round(sum(results$savings_anount), 2), round(sum(results$interest), 2), NA, NA, NA, NA, round(results$capital_end[investment_period], 2)))
     
-    # Daten für den Pie-Chart berechnen
+    # Calculate data for the pie chart
     total_savings_anount <- sum(results$savings_anount) + initial_capital
     total_interest <- sum(results$interest)
     total_capital <- total_savings_anount + total_interest
@@ -170,13 +169,13 @@ server <- function(input, output) {
       crosspoint_string <- NA
     }
     
-    # Überprüfen Sie, ob target_value nicht NA ist
+    # Check if target_value is not NA
     if (!is.na(target_value)) {
-      # Interpolieren Sie, um das Jahr zu finden, in dem target_value erreicht wird
+      # Interpolate to find the year when target_value is reached
       interpolated_target <- approx(results$capital_end, results$year, xout = target_value)
       
-      # Datum, an dem target_value erreicht wird
-      year_at_target <- interpolated_target$y  # Abrunden ohne Nachkommastellen
+      # Date when target_value is reached
+      year_at_target <- interpolated_target$y 
     }
 
     output$plot1 <- renderPlot({
@@ -186,20 +185,20 @@ server <- function(input, output) {
         labs(title = "Capital growth over time", x = "Year", y = "Amount [ € ]") +
         scale_y_continuous(labels = scales::comma_format(big.mark = ".", decimal.mark = ",")) +
         scale_color_manual(values = c("Savings" = "steelblue", "Total Capital" = "lightgreen"),
-                           breaks = c("Total Capital", "Savings")) + # Reihenfolge in der Legende ändern
+                           breaks = c("Total Capital", "Savings")) + # Change order in the legend
         guides(color = guide_legend(title = NULL)) +
         theme_minimal() +
         theme(
           plot.title = element_text(size = 20, hjust = 0.5),
           plot.title.position = "plot",
           legend.text = element_text(size = 16),
-          axis.text = element_text(size = 14), # Größe der Achsenbeschriftung ändern
-          axis.title = element_text(size = 16)  # Größe des Achsentitels ändern
+          axis.text = element_text(size = 14), # Change size of axis labeling
+          axis.title = element_text(size = 16)  # Change size of axis title
         )
     })
     
     output$plot2 <- renderPlot({
-      # Daten für den Pie-Chart erstellen
+      # Create data for the pie chart
       pie_data <- data.frame(
         Kategorie = c("Total Savings", "Total Interest"),
         Wert = c(total_savings_anount, total_interest)
@@ -290,8 +289,8 @@ server <- function(input, output) {
     })
     
     output$plot5 <- renderPlot({
-      # Diagramm erstellen
-      # Bestimmen Sie die Jahre, in denen die Linie capital_end die Schwellenwerte erreicht
+      # Create diagram
+      # Determine the years when the capital_end line reaches the threshold values
       thresholds <- seq(100000, 1000000, by = 100000)
       years_at_threshold <- numeric(length(thresholds))
       
@@ -301,7 +300,7 @@ server <- function(input, output) {
       }
       
       if (!all(is.na(years_at_threshold))) {
-        # Erstellen Sie ein Dataframe für die Segmente
+        # Create a dataframe for the segments
         segment_data <- data.frame(
           x = rep(min(results$year), length(thresholds)),
           xend = years_at_threshold,
@@ -311,18 +310,18 @@ server <- function(input, output) {
         
         segment_data <- na.omit(segment_data)
         
-        # Abstand zwischen den Jahren berechnen
+        # Calculate difference between the years
         segment_data$diff <- c(NA, diff(segment_data$xend))
         
-        # Zeitraum bis zum Erreichen der ersten 100.000 Euro berechnen
+        # Calculate period until reaching the first 100,000 Euros
         time_to_first_threshold <- segment_data$xend[1] - segment_data$x[1]
         
-        # Diagramm erstellen
+        # Create diagram
         ggplot(results, aes(x = year, y = capital_end)) +
           geom_line(color = "lightgreen", size= 1.2) +
           geom_segment(data = segment_data, aes(x = xend, xend = xend, y = 0, yend = y), linetype = "dashed", color = "orange") +
-          geom_text(data = segment_data[1, ], aes(x = xend, y = max(results$capital_end) * 0.05, label = sprintf("%.1f", time_to_first_threshold)), check_overlap = TRUE, size = 5, hjust = 1.2, vjust = 0.6) +  # Text für den ersten Schwellenwert hinzufügen
-          geom_text(data = segment_data[-1, ], aes(x = xend, y = max(results$capital_end) * 0.05, label = sprintf("%.1f", diff)), check_overlap = TRUE, size = 5, hjust = 1.2, vjust = 0.6) +  # Text für die anderen Schwellenwerte hinzufügen
+          geom_text(data = segment_data[1, ], aes(x = xend, y = max(results$capital_end) * 0.05, label = sprintf("%.1f", time_to_first_threshold)), check_overlap = TRUE, size = 5, hjust = 1.2, vjust = 0.6) +  # Add text for the first threshold value
+          geom_text(data = segment_data[-1, ], aes(x = xend, y = max(results$capital_end) * 0.05, label = sprintf("%.1f", diff)), check_overlap = TRUE, size = 5, hjust = 1.2, vjust = 0.6) +  # Add text for the other threshold values
           labs(title = "Development of total capital and consideration of characteristic anchor points", x = "Year", y = "Value [ € ]") +
           scale_y_continuous(labels = scales::comma_format(big.mark = ".", decimal.mark = ",")) +
           theme_minimal() +
@@ -330,9 +329,9 @@ server <- function(input, output) {
             plot.title = element_text(size = 20, hjust = 0.5),
             plot.title.position = "plot",
             legend.text = element_text(size = 16),
-            legend.title = element_blank(),  # Titel der Legende ausblenden
-            axis.text = element_text(size = 14), # Größe der Achsenbeschriftung ändern
-            axis.title = element_text(size = 16)  # Größe des Achsentitels ändern
+            legend.title = element_blank(),  # Hide the title of the legend
+            axis.text = element_text(size = 14), # Change size of axis labeling
+            axis.title = element_text(size = 16)  # Change size of axis title
             )  
       }
     })
@@ -404,11 +403,10 @@ server <- function(input, output) {
     })
     
     output$plot7 <- renderPlot({
-      # Überprüfen Sie, ob ein Datum ermittelt wurde
+      # Check if target_value is not NA
       if (!is.na(target_value)) {
         if (!is.na(year_at_target)) {
         
-        # Fügen Sie horizontale und vertikale Linien in das Diagramm ein
         ggplot(results, aes(x = year, y = capital_end)) +
           geom_line(color = "lightgreen", size= 1.2) +
           geom_hline(yintercept = target_value, linetype = "dashed", color = "orange", size = 1) +
@@ -463,8 +461,6 @@ server <- function(input, output) {
         select(year, `Capital Beginning of the Year [€]`, `Savings Amount per Year [€]`, `Generated Interest per Year [€]`, `Capital at the end of the Year [€]`)
       
       table_all_values$`Capital Beginning of the Year [€]`[nrow(table_all_values)] <- ""
-      # Umbenennung der Spalten
-      #colnames(table_render) <- c("Year", "Capital Beginning of the Year [€]", "Savings Amount per Year [€]", "Generated Interest per Year [€]", "Capital at the end of the Year [€]")
       
       table_all_values
     })
@@ -472,5 +468,5 @@ server <- function(input, output) {
   })
 }
 
-# Shiny-App ausführen
+# run shiny app
 shinyApp(ui = ui, server = server)
