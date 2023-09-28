@@ -7,3 +7,4 @@ RUN rm -rf /srv/shiny-server/*
 WORKDIR /srv/shiny-server/
 
 COPY ./shiny_app/app.R ./app.R
+COPY ./shiny_app/instructions.md ./instructions.md
