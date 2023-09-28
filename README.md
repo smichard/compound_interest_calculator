@@ -3,7 +3,7 @@ The "Capital building calculator" Shiny app provides a tool for users to visuali
 
 **Note:** This is a theoretical model, and the results are based on the input parameters provided by the user. Actual financial outcomes may vary based on various factors not accounted for in this model.  
 
-[![Container availble on Quay](https://quay.io/repository/michard/compound_interest_calculator/status "Container availble on Quay")](https://quay.io/repository/michard/compound_interest_calculator)
+Container image available here: [![Container availble on Quay](https://quay.io/repository/michard/compound_interest_calculator/status "Container availble on Quay")](https://quay.io/repository/michard/compound_interest_calculator)
 
 App available here: [link](https://compound-calculator.michard.io)
 
