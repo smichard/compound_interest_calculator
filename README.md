@@ -34,7 +34,7 @@ App available here: [link](https://compound-calculator.michard.io)
 By using this app, users can gain insights into how their capital will grow over time, understand the impact of different financial decisions, and set realistic financial goals.
 
 ## Run app locally
-1.  Clone this repository
+1.  Clone this repository:
 ```bash
 git clone https://github.com/smichard/compound_interest_calculator.git
 ```
