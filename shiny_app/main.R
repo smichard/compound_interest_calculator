@@ -338,3 +338,60 @@ if (!is.na(target_value)) {
   }
 }
 
+# Calculate dynamic target values based on the initial capital and capital_end values
+doubling_factor <- 2
+max_target_value <- max(results$capital_end)  # You can adjust this as needed
+
+# Define a function to calculate the year when capital doubles based on a target value
+calculateDoublingYear <- function(target_value, results) {
+  interpolated_target <- approx(results$capital_end, results$year, xout = target_value)
+  return(interpolated_target$y)
+}
+
+
+# Calculate doubling of initial capital
+double_target <- numeric()
+current_target <- initial_capital
+
+while (current_target <= max_target_value) {
+  # Find the next target by doubling the current one
+  next_target <- current_target * doubling_factor
+  
+  # Check if the next target is achievable based on capital_end
+  if (next_target <= max(results$capital_end)) {
+    double_target <- c(double_target, next_target)
+    current_target <- next_target
+  } else {
+    break  # Stop if doubling is no longer possible
+  }
+}
+
+
+if (length(double_target) != 0) {
+  # double_target is not empty, calculate values and plot diagram
+  # Calculate the years when capital doubles for each dynamically calculated target value
+  doubling_years <- sapply(double_target, function(target) {
+    calculateDoublingYear(target, results)
+  })
+  
+  # Create a data frame for labeling doubling years
+  label_data <- data.frame(year = doubling_years, label = floor(doubling_years))
+  
+  # Create the original plot
+  ggplot(results, aes(x = year, y = capital_end)) +
+    geom_line(color = "lightgreen", size = 1.2) +
+    geom_vline(xintercept = doubling_years, linetype = "dashed", color = "orange", size = 1) +
+    geom_text(data = label_data, aes(x = year, y = max(results$capital_end) * 0.05, label = label), size = 5, color = "black", hjust = 1.1) +  # Add text labels for doubling years
+    labs(title = "Capital Doubling from Initial Investment", x = "Year", y = "Value [ € ]") +
+    scale_y_continuous(labels = scales::comma_format(big.mark = ".", decimal.mark = ",")) +
+    theme_minimal() +
+    theme(
+      plot.title = element_text(size = 20, hjust = 0.5),
+      plot.title.position = "plot",
+      legend.text = element_text(size = 16),
+      legend.title = element_blank(),
+      axis.text = element_text(size = 14),
+      axis.title = element_text(size = 16)
+    )
+} 
+
