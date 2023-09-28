@@ -7,12 +7,12 @@ library(tibble)
 
 # Input parameters
 start_date <- ymd("2024-01-01")
-initial_capital <- 10000
+initial_capital <- 100000
 savings_rate <- 1000
 savings_intervall <- "monthly"  # oder "yearly"
 adjustment_rate <- 0  # 5% als Dezimalzahl
 interest_rate <- 0.075  # 3% als Dezimalzahl
-investment_period <- 20  # in yearen
+investment_period <- 30  # in yearen
 savings_suspension <- NA  # Optionaler Wert
 target_value <- NA  # Optionaler Wert
 intersection_year <- NA
